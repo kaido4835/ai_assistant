@@ -5,8 +5,8 @@ from telegram.ext import Application, CommandHandler, MessageHandler, filters, C
 from huggingface_hub import InferenceClient
 
 # Ваши токены
-TELEGRAM_TOKEN = "TELEGRAMTOKEN"
-HUGGINGFACE_TOKEN = "HUGGING_FACE_TOKEN"
+TELEGRAM_TOKEN = os.getenv("TELEGRAMTOKEN")
+HUGGINGFACE_TOKEN = os.getenv("HUGGING_FACE_TOKEN")
 
 # Инициализация AI клиента
 ai_client = InferenceClient(
