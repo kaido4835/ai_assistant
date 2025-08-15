@@ -1,10 +1,13 @@
 import os
 import asyncio
+
+from dotenv import load_dotenv
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 from huggingface_hub import InferenceClient
 
-# Ваши токены
+load_dotenv()
+
 TELEGRAM_TOKEN = os.getenv("TELEGRAMTOKEN")
 HUGGINGFACE_TOKEN = os.getenv("HUGGING_FACE_TOKEN")
 
