@@ -11,6 +11,7 @@ from utils.session_manager import SessionManager
 from handlers.commands import start_command
 from handlers.messages import handle_message
 from handlers.callbacks import callback_handler
+from handlers.operator import OperatorHandler
 
 
 def setup_bot_data(application: Application):
@@ -25,23 +26,53 @@ def setup_bot_data(application: Application):
     lead_service = LeadService(db)
     session_manager = SessionManager(db)
 
+    # Инициализация обработчика операторов
+    operator_handler = OperatorHandler()
+
     # Сохраняем в bot_data для доступа из хендлеров
     application.bot_data.update({
         'db': db,
         'ai_service': ai_service,
         'program_search': program_search,
         'lead_service': lead_service,
-        'session_manager': session_manager
+        'session_manager': session_manager,
+        'operator_handler': operator_handler
     })
+
+
+async def operator_start_command(update: Update, context):
+    """Команда /start для оператора"""
+    if str(update.effective_chat.id) == Settings.MANAGER_CHAT_ID:
+        await update.message.reply_text(Settings.OPERATOR_WELCOME_MESSAGE)
+    else:
+        await start_command(update, context)
+
+
+async def error_handler(update: Update, context):
+    """Глобальный обработчик ошибок"""
+    print(f"Произошла ошибка: {context.error}")
+
+    if update and update.effective_message:
+        try:
+            await update.effective_message.reply_text(
+                "⚠️ Произошла техническая ошибка. Попробуйте позже или обратитесь к оператору."
+            )
+        except Exception as e:
+            print(f"Не удалось отправить сообщение об ошибке: {e}")
 
 
 def main():
     """Запуск образовательного консультанта"""
-    print("🚀 Запускаю образовательного консультанта...")
+    print("🚀 Запускаю образовательного консультанта с поддержкой операторов...")
 
     if not Settings.TELEGRAM_TOKEN:
-        print("❌ Ошибка: TELEGRAM_TOKEN не найден!")
+        print("❌ Ошибка: TELEGRAM_TOKEN не найден в переменных окружения!")
+        print("💡 Добавьте TELEGRAM_TOKEN в файл .env")
         return
+
+    if not Settings.MANAGER_CHAT_ID:
+        print("⚠️ Предупреждение: MANAGER_CHAT_ID не настроен!")
+        print("💡 Добавьте MANAGER_CHAT_ID в файл .env для работы с операторами")
 
     application = Application.builder().token(Settings.TELEGRAM_TOKEN).build()
 
@@ -49,12 +80,26 @@ def main():
     setup_bot_data(application)
 
     # Регистрация обработчиков
-    application.add_handler(CommandHandler("start", start_command))
+    application.add_handler(CommandHandler("start", operator_start_command))
     application.add_handler(CallbackQueryHandler(callback_handler))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
+    # Добавляем обработчик ошибок
+    application.add_error_handler(error_handler)
+
     print("✅ Образовательный консультант запущен!")
     print("🎓 Готов помогать студентам найти программы обучения за рубежом")
+    print("👨‍💼 Система операторов активирована")
+
+    if Settings.MANAGER_CHAT_ID:
+        print(f"📞 Операторский чат: {Settings.MANAGER_CHAT_ID}")
+
+    print("\n🔧 Команды для операторов:")
+    print("• /help_operator - справка")
+    print("• /stats - статистика")
+    print("• /reply_USER_ID текст - ответить клиенту")
+    print("\n🚀 Бот работает...")
+
     application.run_polling(allowed_updates=Update.ALL_TYPES)
 
 

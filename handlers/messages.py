@@ -6,12 +6,38 @@ from utils.session_manager import SessionManager
 from services.ai_service import AIService
 from services.program_search import ProgramSearchService
 from services.lead_service import LeadService
+from handlers.operator import OperatorHandler
 
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Обработка текстовых сообщений"""
-    user_message = update.message.text
+
+    # Получаем обработчик операторов
+    if 'operator_handler' not in context.bot_data:
+        context.bot_data['operator_handler'] = OperatorHandler()
+
+    operator_handler = context.bot_data['operator_handler']
+
+    # Проверяем, не пытается ли оператор ответить пользователю
+    if update.message.text.startswith('/reply_'):
+        if await operator_handler.handle_operator_reply(update, context):
+            return
+
+    # Проверяем команды для операторов
+    if update.message.text == '/help_operator':
+        await send_operator_help(update, context)
+        return
+    elif update.message.text == '/stats':
+        await operator_handler.get_operator_stats(update, context)
+        return
+
+    # Проверяем, не подключен ли пользователь к оператору
     user_id = update.effective_user.id
+    if await operator_handler.handle_user_message_to_operator(update, context):
+        return
+
+    # Остальная логика обработки сообщений (ваш существующий код)
+    user_message = update.message.text
 
     # Получаем сервисы из bot_data
     session_manager: SessionManager = context.bot_data['session_manager']
@@ -42,8 +68,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     elif "связаться с менеджером" in user_message.lower():
-        await update.message.reply_text(Settings.CONTACT_MESSAGE)
-        # TODO: Уведомить менеджера
+        # Используем новую систему операторов
+        await operator_handler.request_operator(update, context)
         return
 
     elif "процессе" in user_message.lower():
@@ -75,6 +101,43 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(ai_response)
 
     session_manager.save_session(session)
+
+
+async def send_operator_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Отправка справки для оператора"""
+    help_text = """
+📋 **Справка для операторов**
+
+**Основные команды:**
+• `/reply_USER_ID текст` - ответить клиенту
+• `/stats` - статистика работы
+• `/help_operator` - эта справка
+
+**Примеры использования:**
+• `/reply_123456 Добро пожаловать! Чем могу помочь?`
+• `/reply_789012 Сейчас подберу программы под ваши критерии`
+
+**Быстрые ответы:**
+• "Добро пожаловать! Чем могу помочь?"
+• "Сейчас подберу программы под ваши критерии"
+• "Отправлю вам подробную информацию на email"
+• "Давайте обсудим ваши образовательные цели"
+
+**Правила работы:**
+✅ Отвечайте в течение 2-3 минут
+✅ Задавайте уточняющие вопросы
+✅ Предлагайте конкретные решения
+✅ Используйте кнопки для управления диалогами
+❌ Не оставляйте клиентов без ответа
+❌ Не давайте ложных обещаний
+
+**Статусы клиентов:**
+🔥 Горячий лид - готов подавать документы
+🔶 Теплый лид - активно интересуется
+🔵 Холодный лид - собирает информацию
+    """
+
+    await update.message.reply_text(help_text)
 
 
 async def handle_step_by_step_collection(user_message: str, session, program_search) -> str:
@@ -178,7 +241,7 @@ async def extract_user_info(message: str, session):
 
             if 'тысяч' in message_lower or 'k' in message_lower:
                 budget *= 1000
-            elif 'долларов' in message_lower or '$' in message_lower:
+            elif 'долларов' in message_lower or '' in message_lower:
                 budget = int(budget * 0.85)
 
             session.profile['max_budget'] = budget
