@@ -8,7 +8,21 @@ class Settings:
     # Токены
     TELEGRAM_TOKEN = os.getenv("TELEGRAMTOKEN")
     HUGGINGFACE_TOKEN = os.getenv("HUGGING_FACE_TOKEN")
-    MANAGER_CHAT_ID = os.getenv("MANAGER_CHAT_ID")
+
+    # ИСПРАВЛЕНО: Переименовано для ясности
+    MANAGER_USER_ID = os.getenv("MANAGER_USER_ID")  # User ID основного оператора
+
+    # Список всех операторов (User ID)
+    OPERATOR_IDS = []
+    if MANAGER_USER_ID:
+        OPERATOR_IDS.append(int(MANAGER_USER_ID))
+
+    # Дополнительные операторы из переменной окружения
+    additional_operators = os.getenv("ADDITIONAL_OPERATORS", "")
+    if additional_operators:
+        for op_id in additional_operators.split(","):
+            if op_id.strip():
+                OPERATOR_IDS.append(int(op_id.strip()))
 
     # AI настройки
     AI_MODEL = "openai/gpt-oss-120b"
@@ -24,10 +38,20 @@ class Settings:
     MANAGER_NOTIFICATION_THRESHOLD = 7
 
     # Настройки операторов
-    OPERATOR_WORKING_HOURS_START = 9  # Начало рабочего дня
-    OPERATOR_WORKING_HOURS_END = 21  # Конец рабочего дня
-    MAX_CONCURRENT_CHATS = 5  # Максимум диалогов на оператора
-    QUEUE_CHECK_INTERVAL = 300  # Интервал проверки очереди (сек)
+    OPERATOR_WORKING_HOURS_START = 9
+    OPERATOR_WORKING_HOURS_END = 21
+    MAX_CONCURRENT_CHATS = 5
+    QUEUE_CHECK_INTERVAL = 300
+
+    @classmethod
+    def is_operator(cls, user_id: int) -> bool:
+        """Проверка, является ли пользователь оператором"""
+        return user_id in cls.OPERATOR_IDS
+
+    @classmethod
+    def get_available_operators(cls) -> list:
+        """Получить список доступных операторов"""
+        return cls.OPERATOR_IDS.copy()
 
     # Дополнительные операторы (если есть)
     ADDITIONAL_OPERATORS = [

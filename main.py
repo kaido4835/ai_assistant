@@ -42,7 +42,7 @@ def setup_bot_data(application: Application):
 
 async def operator_start_command(update: Update, context):
     """Команда /start для оператора"""
-    if str(update.effective_chat.id) == Settings.MANAGER_CHAT_ID:
+    if str(update.effective_chat.id) == Settings.MANAGER_USER_ID:
         await update.message.reply_text(Settings.OPERATOR_WELCOME_MESSAGE)
     else:
         await start_command(update, context)
@@ -70,9 +70,9 @@ def main():
         print("💡 Добавьте TELEGRAM_TOKEN в файл .env")
         return
 
-    if not Settings.MANAGER_CHAT_ID:
-        print("⚠️ Предупреждение: MANAGER_CHAT_ID не настроен!")
-        print("💡 Добавьте MANAGER_CHAT_ID в файл .env для работы с операторами")
+    if not Settings.MANAGER_USER_ID:
+        print("⚠️ Предупреждение: MANAGER_USER_ID не настроен!")
+        print("💡 Добавьте MANAGER_USER_ID в файл .env для работы с операторами")
 
     application = Application.builder().token(Settings.TELEGRAM_TOKEN).build()
 
@@ -83,6 +83,7 @@ def main():
     application.add_handler(CommandHandler("start", operator_start_command))
     application.add_handler(CallbackQueryHandler(callback_handler))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+    application.add_handler(CommandHandler("get_id", get_id_command))
 
     # Добавляем обработчик ошибок
     application.add_error_handler(error_handler)
@@ -91,8 +92,8 @@ def main():
     print("🎓 Готов помогать студентам найти программы обучения за рубежом")
     print("👨‍💼 Система операторов активирована")
 
-    if Settings.MANAGER_CHAT_ID:
-        print(f"📞 Операторский чат: {Settings.MANAGER_CHAT_ID}")
+    if Settings.MANAGER_USER_ID:
+        print(f"📞 Операторский чат: {Settings.MANAGER_USER_ID}")
 
     print("\n🔧 Команды для операторов:")
     print("• /help_operator - справка")
@@ -103,5 +104,22 @@ def main():
     application.run_polling(allowed_updates=Update.ALL_TYPES)
 
 
+async def get_id_command(update: Update, context):
+    """Команда для получения ID пользователя и чата"""
+    user_id = update.effective_user.id
+    chat_id = update.effective_chat.id
+    username = update.effective_user.username or "Не указан"
+
+    info_text = f"""
+🆔 **Ваши идентификаторы:**
+
+👤 **User ID:** `{user_id}`
+💬 **Chat ID:** `{chat_id}` 
+📝 **Username:** @{username}
+
+💡 **Для настройки операторов используйте User ID**
+    """
+
+    await update.message.reply_text(info_text)
 if __name__ == "__main__":
     main()
